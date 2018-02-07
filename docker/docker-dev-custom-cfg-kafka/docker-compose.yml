@@ -8,7 +8,6 @@ services:
      - "6060:6060"
      - "2003:2003"
     volumes:
-      - ../../build/metrictank:/usr/bin/metrictank
       - ./metrictank.ini:/etc/metrictank/metrictank.ini
       - ./storage-schemas.conf:/etc/metrictank/storage-schemas.conf
       - ./storage-aggregation.conf:/etc/metrictank/storage-aggregation.conf

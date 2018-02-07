@@ -3,10 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
-	"math/rand"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -73,7 +71,6 @@ func main() {
 	}
 	flag.Parse()
 	log.NewLogger(0, "console", fmt.Sprintf(`{"level": %d, "formatting":false}`, 2))
-	instance := "mt-kafka-mdm-sniff" + strconv.Itoa(rand.Int())
 
 	// Only try and parse the conf file if it exists
 	path := ""
@@ -93,10 +90,8 @@ func main() {
 
 	// config may have had it disabled
 	inKafkaMdm.Enabled = true
-	// important: we don't want to share the same offset tracker as the mdm input of MT itself
-	inKafkaMdm.DataDir = "/tmp/" + instance
 
-	inKafkaMdm.ConfigProcess(instance)
+	inKafkaMdm.ConfigProcess()
 
 	stats.NewDevnull() // make sure metrics don't pile up without getting discarded
 

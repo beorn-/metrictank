@@ -86,6 +86,12 @@
   revision = "3a0bb77429bd3a61596f5e8a3172445844342120"
 
 [[projects]]
+  name = "github.com/confluentinc/confluent-kafka-go"
+  packages = ["kafka"]
+  revision = "f696f02dcbb04d95b103c5b848bb15f749a996f7"
+  version = "v0.11.0"
+
+[[projects]]
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   revision = "346938d642f2ec3594ed81d874461961cd0faa76"
@@ -567,29 +573,16 @@
   revision = "995f5b2e021c69b8b028ba6d0b05c1dd500783db"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/syndtr/goleveldb"
-  packages = [
-    "leveldb",
-    "leveldb/cache",
-    "leveldb/comparer",
-    "leveldb/errors",
-    "leveldb/filter",
-    "leveldb/iterator",
-    "leveldb/journal",
-    "leveldb/memdb",
-    "leveldb/opt",
-    "leveldb/storage",
-    "leveldb/table",
-    "leveldb/util"
-  ]
-  revision = "3d8f4155ffd9029d32e5cf03853b58759b6e3710"
-
-[[projects]]
   name = "github.com/tinylib/msgp"
   packages = ["msgp"]
   revision = "0cea1fa86e8403be1284013014f87ab942056de8"
   version = "v1.0-beta"
+
+[[projects]]
+  name = "github.com/twinj/uuid"
+  packages = ["."]
+  revision = "835a10bbd6bce40820349a68b1368a62c3c5617c"
+  version = "v1.0.0"
 
 [[projects]]
   name = "github.com/uber/jaeger-client-go"
@@ -743,6 +736,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "f0f58298f0ec7db8baa3d1e3f15e3055a35b9d70623d66467a99e6146605c9b1"
+  inputs-digest = "22ce45cbec4e72c18708e394401e42ccdaeb557b2b9a15be5efc6cdfb6e4cc56"
   solver-name = "gps-cdcl"
   solver-version = 1

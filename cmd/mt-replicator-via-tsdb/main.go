@@ -93,7 +93,7 @@ func main() {
 	cluster.Mode = cluster.ModeSingle
 	cluster.Init(*instance, gitHash, time.Now(), "", 0)
 
-	inKafkaMdm.ConfigProcess(*instance)
+	inKafkaMdm.ConfigProcess()
 	statsConfig.ConfigProcess(*instance)
 
 	sigChan := make(chan os.Signal, 1)
