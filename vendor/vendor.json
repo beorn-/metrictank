@@ -164,7 +164,7 @@
 		{
 			"checksumSHA1": "DX8+OoQ2zLs3tqTTlhKmej7xp2A=",
 			"path": "github.com/confluentinc/confluent-kafka-go/kafka",
-			"revision": "467fbeaba03c316f7799e3ae3ae25a91fafa9946",
+			"revision": "3819f9a0e47107712ae9a6aebe31037c9536a2c6",
 			"revisionTime": "2017-12-15T11:38:03Z"
 		},
 		{

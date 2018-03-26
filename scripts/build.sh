@@ -38,8 +38,8 @@ OUTPUT=$BUILDDIR/metrictank
 if [ "$1" == "-race" ]
 then
   set -x
-  go build -race -ldflags "-X main.gitHash=$GITVERSION" -o $OUTPUT -tags static
+  go build -tags static -race -ldflags "-X main.gitHash=$GITVERSION" -o $OUTPUT
 else
   set -x
-  go build -ldflags "-X main.gitHash=$GITVERSION" -o $OUTPUT -tags static
+  go build -tags static -ldflags "-X main.gitHash=$GITVERSION" -o $OUTPUT
 fi

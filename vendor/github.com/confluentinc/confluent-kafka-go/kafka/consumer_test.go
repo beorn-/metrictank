@@ -18,9 +18,11 @@ package kafka
 
 import (
 	"fmt"
+	"os"
 	"reflect"
 	"sort"
 	"testing"
+	"time"
 )
 
 // TestConsumerAPIs dry-tests most Consumer APIs, no broker is needed.
@@ -32,9 +34,11 @@ func TestConsumerAPIs(t *testing.T) {
 	}
 
 	c, err = NewConsumer(&ConfigMap{
-		"group.id":           "gotest",
-		"socket.timeout.ms":  10,
-		"session.timeout.ms": 10})
+		"group.id":                 "gotest",
+		"socket.timeout.ms":        10,
+		"session.timeout.ms":       10,
+		"enable.auto.offset.store": false, // permit StoreOffsets()
+	})
 	if err != nil {
 		t.Fatalf("%s", err)
 	}
@@ -70,7 +74,7 @@ func TestConsumerAPIs(t *testing.T) {
 	if err != nil && err.(Error).Code() != ErrUnknownPartition {
 		t.Errorf("StoreOffsets() failed: %s", err)
 		toppar := stored[0]
-		if toppar.Error.(Error).Code() == ErrUnknownPartition {
+		if toppar.Error != nil && toppar.Error.(Error).Code() == ErrUnknownPartition {
 			t.Errorf("StoreOffsets() TopicPartition error: %s", toppar.Error)
 		}
 	}
@@ -197,6 +201,39 @@ func TestConsumerAssignment(t *testing.T) {
 
 	t.Logf("Compare Assignment %v to original list of partitions %v\n",
 		assignment, partitions)
+
+	// Use Logf instead of Errorf for timeout-checking errors on CI builds
+	// since CI environments are unreliable timing-wise.
+	tmoutFunc := t.Errorf
+	_, onCi := os.LookupEnv("CI")
+	if onCi {
+		tmoutFunc = t.Logf
+	}
+
+	// Test ReadMessage()
+	for _, tmout := range []time.Duration{0, 200 * time.Millisecond} {
+		start := time.Now()
+		m, err := c.ReadMessage(tmout)
+		duration := time.Since(start)
+
+		t.Logf("ReadMessage(%v) ret %v and %v in %v", tmout, m, err, duration)
+		if m != nil || err == nil {
+			t.Errorf("Expected ReadMessage to fail: %v, %v", m, err)
+		}
+		if err.(Error).Code() != ErrTimedOut {
+			t.Errorf("Expected ReadMessage to fail with ErrTimedOut, not %v", err)
+		}
+
+		if tmout == 0 {
+			if duration.Seconds() > 0.1 {
+				tmoutFunc("Expected ReadMessage(%v) to fail after max 100ms, not %v", tmout, duration)
+			}
+		} else if tmout > 0 {
+			if duration.Seconds() < tmout.Seconds()*0.75 || duration.Seconds() > tmout.Seconds()*1.25 {
+				tmoutFunc("Expected ReadMessage() to fail after %v -+25%%, not %v", tmout, duration)
+			}
+		}
+	}
 
 	// reflect.DeepEqual() can't be used since TopicPartition.Topic
 	// is a pointer to a string rather than a string and the pointer
