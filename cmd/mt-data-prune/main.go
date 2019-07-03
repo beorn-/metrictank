@@ -19,19 +19,20 @@ import (
 )
 
 var (
-	dryRun            = flag.Bool("dry-run", true, "run in dry-run mode. No changes will be made.")
-	logLevel          = flag.String("log-level", "info", "log level. panic|fatal|error|warning|info|debug")
-	numPartitions     = flag.Int("num-partitions", 1, "number of partitions in cluster")
-	partitionScheme   = flag.String("partition-scheme", "byOrg", "method used for partitioning metrics. (byOrg|bySeries)")
-	months            = flag.Int64("months", 1, "number of months to go back for the queriesCount")
-	schemaIdxFile     = flag.String("schema-idx-file", "/etc/metrictank/schema-idx-cassandra.toml", "File containing the needed schemas in case database needs initializing")
-	schemaStorageFile = flag.String("schema-storage-file", "/etc/metrictank/storage-schemas.conf", "File containing the retention policy")
-	srcCassAddr       = flag.String("src-cass-addr", "localhost", "Address of cassandra host to migrate from.")
-	srcKeyspace       = flag.String("src-keyspace", "raintank", "Cassandra keyspace in use on source.")
-	srcTable          = flag.String("src-table", "metric_idx", "Cassandra table name in use on source.")
-	aggsFile          = flag.String("aggregation-file", "/etc/metrictank/storage-aggregation.conf", "File containing the aggregation configurations")
-	windowFactor      = flag.Int("window-factor", 20, "size of compaction window relative to TTL")
-	workers           = flag.Int("delete-workers", 1, "number of deletion workers")
+	aggsFile               = flag.String("aggregation-file", "/etc/metrictank/storage-aggregation.conf", "File containing the aggregation configurations")
+	dryRun                 = flag.Bool("dry-run", true, "run in dry-run mode. No changes will be made.")
+	logLevel               = flag.String("log-level", "info", "log level. panic|fatal|error|warning|info|debug")
+	includeLastUpdateMonth = flag.Bool("include-last-update-month", false, "does the code include the month (28 days in metrictank) upper bound in the cleanup")
+	months                 = flag.Int64("months", 1, "number of months to go back for the queriesCount")
+	numPartitions          = flag.Int("num-partitions", 1, "number of partitions in cluster")
+	partitionScheme        = flag.String("partition-scheme", "byOrg", "method used for partitioning metrics. (byOrg|bySeries)")
+	schemaIdxFile          = flag.String("schema-idx-file", "/etc/metrictank/schema-idx-cassandra.toml", "File containing the needed schemas in case database needs initializing")
+	schemaStorageFile      = flag.String("schema-storage-file", "/etc/metrictank/storage-schemas.conf", "File containing the retention policy")
+	srcCassAddr            = flag.String("src-cass-addr", "localhost", "Address of cassandra host to migrate from.")
+	srcKeyspace            = flag.String("src-keyspace", "raintank", "Cassandra keyspace in use on source.")
+	srcTable               = flag.String("src-table", "metric_idx", "Cassandra table name in use on source.")
+	windowFactor           = flag.Int("window-factor", 20, "size of compaction window relative to TTL")
+	workers                = flag.Int("delete-workers", 1, "number of deletion workers")
 )
 
 func main() {
@@ -105,11 +106,12 @@ func main() {
 }
 
 type dataTable struct {
+	Aggregators []string
+	Interval    uint32
+	LastUpdate  uint32
 	MetricID    schema.MKey
 	Name        string
-	Interval    uint32
 	Retention   uint32
-	Aggregators []string
 }
 
 func findTables(session *gocql.Session, definitions chan *schema.MetricDefinition, tables chan dataTable, schemas conf.Schemas) {
@@ -129,22 +131,22 @@ func findTables(session *gocql.Session, definitions chan *schema.MetricDefinitio
 			var table dataTable
 			if r.SecondsPerPoint > 15 {
 				table = dataTable{
+					Aggregators: aggList,
+					Interval:    uint32(r.SecondsPerPoint),
+					LastUpdate:  uint32(def.LastUpdate),
 					MetricID:    def.Id,
 					Name:        t.Name,
-					Interval:    uint32(r.SecondsPerPoint),
 					Retention:   uint32(r.SecondsPerPoint * r.NumberOfPoints),
-					Aggregators: aggList,
 				}
-
 			} else {
 				table = dataTable{
-					MetricID:  def.Id,
-					Name:      t.Name,
-					Interval:  uint32(r.SecondsPerPoint),
-					Retention: uint32(r.SecondsPerPoint * r.NumberOfPoints),
+					Interval:   uint32(r.SecondsPerPoint),
+					LastUpdate: uint32(def.LastUpdate),
+					MetricID:   def.Id,
+					Name:       t.Name,
+					Retention:  uint32(r.SecondsPerPoint * r.NumberOfPoints),
 				}
 			}
-
 			tables <- table
 		}
 	}
@@ -154,13 +156,18 @@ func findTables(session *gocql.Session, definitions chan *schema.MetricDefinitio
 
 func cleanTables(session *gocql.Session, tables chan dataTable, months int64) {
 	pre := time.Now()
-	currentMonth := time.Now().Unix() / storeCassandra.Month_sec
-	firstMonth := currentMonth - months
+	currentMonth := uint32(time.Now().Unix() / storeCassandra.Month_sec)
+	firstMonth := currentMonth - uint32(months)
 
 	var queriesCount int
 	var deletionsCount int
+
 	for table := range tables {
-		for month := firstMonth; month <= currentMonth; month++ {
+		lastMonth := table.LastUpdate / storeCassandra.Month_sec
+		if *includeLastUpdateMonth {
+			lastMonth--
+		}
+		for month := firstMonth; month < lastMonth; month++ {
 
 			queriesCount++
 			var keys []string
